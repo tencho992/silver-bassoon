@@ -1,0 +1,264 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+import geopandas as gpd
+import folium
+from streamlit_folium import folium_static
+from shapely.geometry import Point
+import matplotlib.pyplot as plt
+import seaborn as sns
+from datetime import datetime, timedelta
+from PIL import Image
+
+
+# Load data
+df = pd.read_csv('NewRentalDeals May 2023.csv') 
+
+
+# Convert 'Date' to datetime
+df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+
+# Create Month and Year columns
+df['Month'] = df['Date'].dt.month
+df['Year'] = df['Date'].dt.year
+
+# Convert DataFrame to GeoDataFrame
+gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.Longitude, df.Latitude))
+
+# Set Seaborn theme and color palette
+sns.set_theme(style="whitegrid")
+sns.set_palette("bright")
+
+# Sidebar filters
+st.sidebar.header('Filters')
+
+# Year and Month selection
+years_selected = st.sidebar.multiselect('Select Year(s)', options=sorted(list(df['Year'].unique())), default=sorted(list(df['Year'].unique())))
+
+start_month, end_month = st.sidebar.slider('Select Month Range', 1, 12, (1, 12))  # Default is January to December
+
+# Filter data
+filtered_data = df[
+    (df['Year'].isin(years_selected)) &
+    (df['Month'] >= start_month) &
+    (df['Month'] <= end_month)
+]
+
+
+
+# Other filters
+agent = st.sidebar.selectbox('Select Agent', options=['All'] + list(df['Agent'].unique()))
+city = st.sidebar.selectbox('Select City', options=['All'] + list(df['City'].unique()))
+
+# Rent price range filter
+min_price, max_price = df['Rent'].min(), df['Rent'].max()
+price_range = st.sidebar.slider('Select Rent Price Range', min_price, max_price, (min_price, max_price))
+
+# Zipcode selection based on selected city
+if city != 'All':
+    city_df = df[df['City'] == city]
+    zip_options = list(city_df['Zip'].unique())
+else:
+    zip_options = list(df['Zip'].unique())
+
+zip_code = st.sidebar.selectbox('Select Zip Code', options=['All'] + zip_options, key='zip_select')
+
+filtered_data = gdf[((gdf['Agent'] == agent) | (agent == 'All')) & 
+                    ((gdf['Zip'] == zip_code) | (zip_code == 'All')) &
+                    ((gdf['City'] == city) | (city == 'All')) &
+                    ((gdf['Rent'] >= price_range[0]) & (gdf['Rent'] <= price_range[1])) &
+                    (gdf['Year'].isin(years_selected)) &
+                    (gdf['Month'] >= start_month) & 
+                    (gdf['Month'] <= end_month)]
+
+
+
+# Metrics
+st.sidebar.subheader('Metrics')
+st.sidebar.metric(label="Average Rent", value=int(round(filtered_data['Rent'].mean())))
+st.sidebar.metric(label="Median Household Income", value=int(round(filtered_data['Median household income'].mean())))
+st.sidebar.metric(label="Average Distance to Station", value=round(filtered_data['Distance'].mean(), 2)) # Rounded to 2 decimal places
+st.sidebar.metric(label="Sales Count", value=filtered_data.shape[0])
+st.sidebar.metric(label="Revenue", value=int(round(filtered_data['Rent'].sum())))
+
+# Load image
+image = Image.open('C:/Users/Shing/Downloads/Concept.png')
+
+# Display image
+st.image(image, width=500)  # You can adjust the width as needed
+
+# Main
+st.markdown('## Rental New deal Dashboard')
+
+# Map
+# Define a color dictionary for different years, add more colors for additional years
+color_dict = {2022: 'blue', 2023: 'red'}  # Modify this based on your data years
+
+m = folium.Map([filtered_data['Latitude'].mean(), filtered_data['Longitude'].mean()], zoom_start=13)
+for idx, row in filtered_data.iterrows():
+    # Use the color dictionary to set the color of the marker based on the year
+    folium.Marker([row['Latitude'], row['Longitude']], popup=row['Address'], icon=folium.Icon(color=color_dict[row['Year']])).add_to(m)
+folium_static(m)
+
+
+# Data Table
+#with st.expander('Show Data Table'):
+    #st.write(filtered_data)
+    
+    
+    # Extract the data for each year
+data_2022 = filtered_data[filtered_data['Year'] == 2022]
+data_2023 = filtered_data[filtered_data['Year'] == 2023]
+
+# Compute the sales count and sales revenue for each year
+rentals_count_2022 = data_2022.shape[0]
+rentals_count_2023 = data_2023.shape[0]
+
+rentals_revenue_2022 = data_2022['Rent'].sum()
+rentals_revenue_2023 = data_2023['Rent'].sum()
+
+average_rent_2022 = data_2022['Rent'].mean()
+average_rent_2023 = data_2023['Rent'].mean()
+
+gross_commission_2022 = data_2022['Commission'].sum()
+gross_commission_2023 = data_2023['Commission'].sum()
+
+# Compute the percentage changes
+change_percentage_rentals_count = ((rentals_count_2023 - rentals_count_2022) / rentals_count_2022) * 100
+change_percentage_rentals_revenue = ((rentals_revenue_2023 - rentals_revenue_2022) / rentals_revenue_2022) * 100
+change_percentage_gross_commission = ((gross_commission_2023 - gross_commission_2022) / gross_commission_2022) * 100
+change_percentage_average_rent = ((average_rent_2023 - average_rent_2022) / average_rent_2022) * 100
+
+st.subheader('Rentals Information')
+
+# Rows for 2022
+row1_space1, row1_col1, row1_space2, row1_col2, row1_space3, row1_col3, row1_space4, row1_col4 = st.columns((.1, 1, .1, 1, .1, 1, .1, 1))
+with row1_col1:
+    st.metric(label="Rentals Count 2022", value=rentals_count_2022)
+with row1_col2:
+    st.metric(label="Rentals Revenue 2022", value=int(round(rentals_revenue_2022)))
+with row1_col3:
+    st.metric(label="Gross Commission 2022", value=int(round(gross_commission_2022)))
+with row1_col4:
+    st.metric(label="Average Rent 2022", value=int(round(average_rent_2022)))
+
+# Rows for 2023
+row2_space1, row2_col1, row2_space2, row2_col2, row2_space3, row2_col3, row2_space4, row2_col4 = st.columns((.1, 1, .1, 1, .1, 1, .1, 1))
+with row2_col1:
+    st.metric(label="Rentals Count 2023", value=rentals_count_2023)
+with row2_col2:
+    st.metric(label="Rentals Revenue 2023", value=int(round(rentals_revenue_2023)))
+with row2_col3:
+    st.metric(label="Gross Commission 2023", value=int(round(gross_commission_2023)))
+with row2_col4:
+    st.metric(label="Average Rent 2023", value=int(round(average_rent_2023)))
+
+# Rows for Change Percentage
+row3_space1, row3_col1, row3_space2, row3_col2, row3_space3, row3_col3, row3_space4, row3_col4 = st.columns((.1, 1, .1, 1, .1, 1, .1, 1))
+arrow_up = "\u2B06"
+arrow_down = "\u2B07"
+with row3_col1:
+    arrow = arrow_up if change_percentage_rentals_count >= 0 else arrow_down
+    st.metric(label="Change in Rentals Count (%)", value=f"{arrow} {abs(change_percentage_rentals_count):.2f}%")
+with row3_col2:
+    arrow = arrow_up if change_percentage_rentals_revenue >= 0 else arrow_down
+    st.metric(label="Change in Rentals Revenue (%)", value=f"{arrow} {abs(change_percentage_rentals_revenue):.2f}%")
+with row3_col3:
+    arrow = arrow_up if change_percentage_gross_commission >= 0 else arrow_down
+    st.metric(label="Change in Gross Commission (%)", value=f"{arrow} {abs(change_percentage_gross_commission):.2f}%")
+with row3_col4:
+    arrow = arrow_up if change_percentage_average_rent >= 0 else arrow_down
+    st.metric(label="Change in Average Rent (%)", value=f"{arrow} {abs(change_percentage_average_rent):.2f}%")
+
+# Load sales data
+df_sales = pd.read_csv('sales22-23.csv') 
+
+# Convert 'Date' to datetime
+df_sales['Date'] = pd.to_datetime(df_sales['Date'], errors='coerce')
+
+# Create Month and Year columns
+df_sales['Month'] = df_sales['Date'].dt.month
+df_sales['Year'] = df_sales['Date'].dt.year
+
+# Convert DataFrame to GeoDataFrame
+gdf_sales = gpd.GeoDataFrame(df_sales, geometry=gpd.points_from_xy(df_sales.Longitude, df_sales.Latitude))
+
+# Sidebar filters
+st.sidebar.header('Sales Filters')
+
+# Year and Month selection
+year_sales = st.sidebar.selectbox('Select Sales Year', options=sorted(list(df_sales['Year'].unique())))
+
+start_month_sales, end_month_sales = st.sidebar.slider('Select Sales Month Range', 1, 12, (1, 12))  # Default is January to December
+
+# Filter data
+filtered_data_sales = df_sales[
+    (df_sales['Year'] == year_sales) &
+    (df_sales['Month'] >= start_month_sales) &
+    (df_sales['Month'] <= end_month_sales)
+]
+
+# Other filters
+agent_sales = st.sidebar.selectbox('Select Sales Agent', options=['All'] + list(df_sales['Agent'].unique()))
+city_sales = st.sidebar.selectbox('Select Sales City', options=['All'] + list(df_sales['City'].unique()))
+
+# Sale price range filter
+min_price_sales, max_price_sales = df_sales['Sale Price'].min(), df_sales['Sale Price'].max()
+price_range_sales = st.sidebar.slider('Select Sale Price Range', min_price_sales, max_price_sales, (min_price_sales, max_price_sales))
+
+# Zipcode selection based on selected city
+if city_sales != 'All':
+    city_sales_df = df_sales[df_sales['City'] == city_sales]
+    zip_sales_options = list(city_sales_df['Zip'].unique())
+else:
+    zip_sales_options = list(df_sales['Zip'].unique())
+
+zip_code_sales = st.sidebar.selectbox('Select Sales Zip Code', options=['All'] + zip_sales_options, key='zip_sales_select')
+
+# Filter data
+filtered_data_sales = gdf_sales[((gdf_sales['Agent'] == agent_sales) | (agent_sales == 'All')) & 
+                    ((gdf_sales['Zip'] == zip_code_sales) | (zip_code_sales == 'All')) &
+                    ((gdf_sales['City'] == city_sales) | (city_sales == 'All')) &
+                    ((gdf_sales['Sale Price'] >= price_range_sales[0]) & (gdf_sales['Sale Price'] <= price_range_sales[1])) &
+                    (gdf_sales['Year'] == year_sales) &
+                    (gdf_sales['Month'] >= start_month_sales) & 
+                    (gdf_sales['Month'] <= end_month_sales)]
+
+# Main
+st.header('Sales Data')
+
+# Map
+st.markdown('### Sales Map')
+m_sales = folium.Map([filtered_data_sales['Latitude'].mean(), filtered_data_sales['Longitude'].mean()], zoom_start=13)
+for idx, row in filtered_data_sales.iterrows():
+    folium.Marker([row['Latitude'], row['Longitude']], popup=row['Address']).add_to(m_sales)
+folium_static(m_sales)
+
+# Sales Data Table
+with st.expander('Show Sales Data Table'):
+    st.write(filtered_data_sales)
+
+
+# Convert the 'Date' column to datetime
+df['Date'] = pd.to_datetime(df['Date'])
+filtered_data['Date'] = pd.to_datetime(filtered_data['Date'])
+
+# Extract the day
+df['Day'] = df['Date'].dt.date
+filtered_data['Day'] = filtered_data['Date'].dt.date
+
+# Filter out the year 1900
+df = df[df['Date'].dt.year != 1900]
+filtered_data = filtered_data[filtered_data['Date'].dt.year != 1900]
+
+# Create a figure and axes
+fig, ax = plt.subplots(figsize=(10, 6))
+# Create a scatter plot of rent over time for all data
+sns.scatterplot(x='Day', y='Rent', hue='Year', data=df, ax=ax, palette=color_dict, alpha=0.2)
+
+# Overlay a scatter plot of rent over time for filtered data
+sns.scatterplot(x='Day', y='Rent', hue='Year', data=filtered_data, ax=ax, palette=color_dict, alpha=1.0)
+
+# Render the plot to Streamlit
+st.pyplot(fig)
+
