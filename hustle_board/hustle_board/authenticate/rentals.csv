@@ -1,0 +1,6 @@
+Date,Agent,Address,Landlord,BrokerPayment,MoveInDate,Source,Rent,Latitude,Longitude,Number,Street,Unit Type,Unit Number,City,Zip,Status,Commission
+1/5/2021 0:00,Doug Caves,501 E Broadway Apt 2 South Boston 2127,scs property management,Landlord,2/2/2021,Facebook,995,42.335253,-71.044874,501,E Broadway,Apt,2,South Boston,2127,Converted,995
+1/5/2021 0:00,Denise Evans-Britt,1065 Tremont St U107 Roxbury Crossing 2120,boston real estate collaborative,Tenant,8/1/2021,Zillow Rental Manager,6500,42.336251,-71.08622,1065,Tremont St,,U107,Roxbury Crossing,2120,Converted,6500
+1/21/2021 0:00,Denise Evans-Britt,9 Sunset St Apt 1 Roxbury Crossing 2120,lowtide development,Tenant,9/1/2021,Referral,6800,42.331467,-71.108741,9,Sunset St,Apt,1,Roxbury Crossing,2120,Converted,3100
+1/5/2021 0:00,Doug Caves,501 E Broadway Apt 3 South Boston 2127,scs property management,Landlord,1/15/2021,Facebook,1350,42.335253,-71.044874,501,E Broadway,Apt,3,South Boston,2127,Converted,1350
+1/8/2021 0:00,Doug Caves,501 E Broadway Apt 1 South Boston 2127,scs property management,Landlord,1/2/2021,Facebook,995,42.335253,-71.044874,501,E Broadway,Apt,1,South Boston,2127,Converted,415

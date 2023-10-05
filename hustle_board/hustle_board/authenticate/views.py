@@ -2,16 +2,19 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib import messages
-
+from django.views.decorators.clickjacking import xframe_options_exempt
 
 def home(request):
     return render(request, 'authenticate/home.html', {})
 
-def test(request):
-    return render(request, '../may.py', {})
+# @xframe_options_exempt
+# def test(request):
+#     return render(request, 'authenticate/may.py', {})
+
 
 def profile(request):
-    return render(request, 'authenticate/profile.html', {})
+    print(request.user)
+    return render(request, 'authenticate/profile.html', { "user" : request.user })
 
 def login_user(request):
     if request.method == 'POST':
